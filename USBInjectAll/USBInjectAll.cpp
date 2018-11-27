@@ -34,18 +34,17 @@ void* _org_rehabman_dontstrip_[] =
 };
 
 static char g_exclude[256];
+static char g_include[256];
 static bool g_ignore_rmcf;
 static bool g_exclude_xhc;
 
 static char* g_exclude_hs;
 static char* g_exclude_ss;
-static char* g_exclude_ssp;
 
 static char g_exclude_hs_static[] = "HS01,HS02,HS03,HS04,HS05,HS06,HS07,HS08,HS09,HS10,HS11,HS12,HS13,HS14";
 static char g_exclude_ss_static[] = "SS01,SS02,SS03,SS04,SS05,SS06,SS07,SS08,SS09,SS10";
-static char g_exclude_ssp_static[] = "SSP1,SSP2,SSP3,SSP4,SSP5,SSP6";
 
-OSDefineMetaClassAndStructors(org_rehabman_USBInjectAll, IOService)
+OSDefineMetaClassAndStructors(USBInjectAll, IOService)
 
 static IOPCIDevice* getPCIDevice(IORegistryEntry* registryEntry)
 {
@@ -66,7 +65,7 @@ static IOPCIDevice* getPCIDevice(IORegistryEntry* registryEntry)
 
 OSDictionary* USBInjectAll::getConfigurationForController(UInt16 vendor, UInt16 device)
 {
-    USBInjectAll_config* configService = OSDynamicCast(USBInjectAll_config, waitForMatchingService(serviceMatching("org_rehabman_USBInjectAll_config")));
+    USBInjectAll_config* configService = OSDynamicCast(USBInjectAll_config, waitForMatchingService(serviceMatching("USBInjectAll_config")));
     if (!configService)
     {
         AlwaysLog("USBInjectAll configuration service not available\n");
@@ -84,7 +83,12 @@ OSDictionary* USBInjectAll::getConfigurationForController(UInt16 vendor, UInt16 
     OSDictionary* result = NULL;
 
     // try ConfigurationName from our own configuration
-    if (OSString* configName = OSDynamicCast(OSString, getProperty("kConfigurationName")))
+    if (OSString* configName = OSDynamicCast(OSString, getProperty("kName")))
+    {
+        DebugLog("trying '%s'\n", configName->getCStringNoCopy());
+        result = OSDynamicCast(OSDictionary, dict->getObject(configName));
+    }
+    else if (OSString* configName = OSDynamicCast(OSString, getProperty("IONameMatched")))
     {
         DebugLog("trying '%s'\n", configName->getCStringNoCopy());
         result = OSDynamicCast(OSDictionary, dict->getObject(configName));
@@ -134,7 +138,7 @@ static inline bool isDelimiter(char test)
     return ',' == test || ';' == test;
 }
 
-static void filterPorts(OSDictionary* ports, const char* filter)
+static void filterPorts(OSDictionary* ports, const char* filter, const char* keep)
 {
     // filter is port names delimited by comma
     for (const char* p = filter; *p; )
@@ -145,8 +149,11 @@ static void filterPorts(OSDictionary* ports, const char* filter)
         for (; count && *p && !isDelimiter(*p); --count)
             *dest++ = *p++;
         *dest = 0;
-        DebugLog("removing port '%s'\n", key);
-        ports->removeObject(key);
+        if (!hack_strstr(keep, key))
+        {
+            DebugLog("removing port '%s'\n", key);
+            ports->removeObject(key);
+        }
         if (isDelimiter(*p)) ++p;
     }
 }
@@ -164,16 +171,14 @@ OSDictionary* USBInjectAll::getConfiguration(UInt16 vendor, UInt16 device)
         return NULL;
     }
 
-    // filter based on uia_exclude, -uia_exclude_hs, -uia_exclude_ss, -uia_exclude_ssp
+    // filter based on uia_exclude, -uia_exclude_hs, -uia_exclude_ss
     if (OSDictionary* ports = OSDynamicCast(OSDictionary, injectCopy->getObject("ports")))
     {
-        filterPorts(ports, g_exclude);
+        filterPorts(ports, g_exclude, g_include);
         if (g_exclude_hs)
-            filterPorts(ports, g_exclude_hs);
+            filterPorts(ports, g_exclude_hs, g_include);
         if (g_exclude_ss)
-            filterPorts(ports, g_exclude_ss);
-        if (g_exclude_ssp)
-            filterPorts(ports, g_exclude_ssp);
+            filterPorts(ports, g_exclude_ss, g_include);
     }
 
     return injectCopy;
@@ -214,6 +219,9 @@ IOService* USBInjectAll::probe(IOService* provider, SInt32* score)
     // don't inject on XHC when -uia_exclude_xhc is specified
     if (g_exclude_xhc)
     {
+        OSString* matched = OSDynamicCast(OSString, getProperty("IONameMatched"));
+        if (matched && 0 == strncmp(matched->getCStringNoCopy(), "XHC", 3))
+            return NULL;
         OSBoolean* isXHC = OSDynamicCast(OSBoolean, getProperty("kIsXHC"));
         if (isXHC && isXHC->isTrue())
             return NULL;
@@ -236,6 +244,8 @@ IOService* USBInjectAll::probe(IOService* provider, SInt32* score)
 
 #ifdef DEBUG
     provider->setProperty("RM,Configuration.Merged", inject);
+    if (auto ioNameMatched = getProperty("IONameMatched"))
+        provider->setProperty("RM,IONameMatched", ioNameMatched);
 #endif
     // inject the configuration on the provider
     injectProperties(provider, inject, true);
@@ -246,7 +256,7 @@ IOService* USBInjectAll::probe(IOService* provider, SInt32* score)
 }
 
 
-OSDefineMetaClassAndStructors(org_rehabman_USBInjectAll_config, IOService)
+OSDefineMetaClassAndStructors(USBInjectAll_config, IOService)
 
 bool USBInjectAll_config::start(IOService* provider)
 {
@@ -268,6 +278,9 @@ bool USBInjectAll_config::start(IOService* provider)
     if (PE_parse_boot_argn("uia_exclude", g_exclude, sizeof g_exclude))
         AlwaysLog("uia_exclude specifies '%s'\n", g_exclude);
 
+    if (PE_parse_boot_argn("uia_include", g_include, sizeof g_include))
+        AlwaysLog("uia_include specifies '%s'\n", g_include);
+
     uint32_t flag;
 
     if (PE_parse_boot_argn("-uia_exclude_hs", &flag, sizeof flag))
@@ -280,12 +293,6 @@ bool USBInjectAll_config::start(IOService* provider)
     {
         g_exclude_ss = g_exclude_ss_static;
         AlwaysLog("-uia_exclude_ss specifies '%s'\n", g_exclude_ss);
-    }
-
-    if (PE_parse_boot_argn("-uia_exclude_ssp", &flag, sizeof flag))
-    {
-        g_exclude_ssp = g_exclude_ssp_static;
-        AlwaysLog("-uia_exclude_ssp specifies '%s'\n", g_exclude_ssp);
     }
 
     if (PE_parse_boot_argn("-uia_ignore_rmcf", &flag, sizeof flag))
@@ -425,11 +432,9 @@ OSObject* USBInjectAll_config::translateArray(OSArray* array)
         for (int i = 0; i < count; i += 2)
         {
             OSString* key = OSDynamicCast(OSString, array->getObject(i));
+            // ignore empty entries which can occur at the end of an oversized package
             if (!key)
-            {
-                dict->release();
-                return NULL;
-            }
+                continue;
             // get value, use translated value if translated
             OSObject* obj = array->getObject(i+1);
             OSObject* trans = translateEntry(obj);

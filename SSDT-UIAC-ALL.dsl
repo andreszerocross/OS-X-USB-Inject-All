@@ -16,7 +16,7 @@
 // portType=4 is used by MacBookPro8,3 (reason/purpose unknown)
 //
 
-DefinitionBlock ("", "SSDT", 2, "hack", "UIAC-ALL", 0)
+DefinitionBlock ("", "SSDT", 2, "hack", "_UIAC", 0)
 {
     Device(UIAC)
     {
@@ -231,22 +231,22 @@ DefinitionBlock ("", "SSDT", 2, "hack", "UIAC-ALL", 0)
                         "UsbConnector", 3,
                         "port", Buffer() { 4, 0, 0, 0 },
                     },
-                    "SSP5", Package()
+                    "SS01", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 5, 0, 0, 0 },
                     },
-                    "SSP6", Package()
+                    "SS02", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 6, 0, 0, 0 },
                     },
-                    "SSP7", Package()
+                    "SS03", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 7, 0, 0, 0 },
                     },
-                    "SSP8", Package()
+                    "SS04", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 8, 0, 0, 0 },
@@ -329,32 +329,32 @@ DefinitionBlock ("", "SSDT", 2, "hack", "UIAC-ALL", 0)
                         "port", Buffer() { 14, 0, 0, 0 },
                     },
                     //HS15 is phantom port (port address 15 not used)
-                    "SSP1", Package()
+                    "SS01", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 16, 0, 0, 0 },
                     },
-                    "SSP2", Package()
+                    "SS02", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 17, 0, 0, 0 },
                     },
-                    "SSP3", Package()
+                    "SS03", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 18, 0, 0, 0 },
                     },
-                    "SSP4", Package()
+                    "SS04", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 19, 0, 0, 0 },
                     },
-                    "SSP5", Package()
+                    "SS05", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 20, 0, 0, 0 },
                     },
-                    "SSP6", Package()
+                    "SS06", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 21, 0, 0, 0 },
@@ -411,22 +411,22 @@ DefinitionBlock ("", "SSDT", 2, "hack", "UIAC-ALL", 0)
                         "UsbConnector", 3,
                         "port", Buffer() { 9, 0, 0, 0 },
                     },
-                    "SSP1", Package()
+                    "SS01", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 10, 0, 0, 0 },
                     },
-                    "SSP2", Package()
+                    "SS02", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 11, 0, 0, 0 },
                     },
-                    "SSP3", Package()
+                    "SS03", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 12, 0, 0, 0 },
                     },
-                    "SSP4", Package()
+                    "SS04", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 13, 0, 0, 0 },
@@ -493,22 +493,22 @@ DefinitionBlock ("", "SSDT", 2, "hack", "UIAC-ALL", 0)
                         "UsbConnector", 3,
                         "port", Buffer() { 11, 0, 0, 0 },
                     },
-                    "SSP1", Package()
+                    "SS01", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 12, 0, 0, 0 },
                     },
-                    "SSP2", Package()
+                    "SS02", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 13, 0, 0, 0 },
                     },
-                    "SSP3", Package()
+                    "SS03", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 14, 0, 0, 0 },
                     },
-                    "SSP4", Package()
+                    "SS04", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 15, 0, 0, 0 },

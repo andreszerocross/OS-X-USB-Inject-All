@@ -14,17 +14,19 @@ EH01 hub: 8-USB2 ports HP11-HP18.
 
 EH02 hub: 8-USB2 ports HP21-HP28.
 
-XHC, 7-series chipset (8086:1e31): 4-USB2 ports HS01-HS04, 4-USB3 ports SSP5-SSP8.
+XHC, 7-series chipset (8086:1e31): 4-USB2 ports HS01-HS04, 4-USB3 ports SS01-SS04.
 
-XHC, 8/9-series chipset (8086:9xxx): 9-USB2 ports HS01-HS09, 6-USB3 ports SSP1-SSP6.
+XHC, 8/9-series chipset (8086:9xxx): 9-USB2 ports HS01-HS09, 6-USB3 ports SS01-SS06.
 
-XHC, 8/9-series chipset (8086:8xxx): 14-USB2 ports HS01-HS14, 6-USB3 ports SSP1-SSP6.
+XHC, 8/9-series chipset (8086:8xxx): 14-USB2 ports HS01-HS14, 6-USB3 ports SS01-SS06.
 
-XHC, 8/9-series chipset (8086:9cb1): 11-USB ports HS01-HS11, 4-USB3 ports SSP1-SSP4.
+XHC, 8/9-series chipset (8086:9cb1): 11-USB ports HS01-HS11, 4-USB3 ports SS01-SS04.
 
 XHC, 100-series chipset (8086:a12f): 14-USB2 ports HS01-HS14, 10-USB3 ports SS01-SS10, plus USR1/USR2)
 
 XHC, 100-series chipset (8086:9d2f): 10-USB2 ports HS01-HS10, 6-USB3 ports SS01-SS06, plus USR1/USR2)
+
+XHC, 200-series/300-series chipset, etc.
 
 This kext is only for 10.11+.  It has no use with prior versions.
 
@@ -61,9 +63,9 @@ This kext may be helpful in installation scenarios as well where broken USB may 
 
 ### Injected Property Customization
 
-Two mechanisms are provided for customizing the injections that this kext performs.  Kernel flag 'uia_exclude' can be used to eliminate ports that would normally be injected.  uia_exclude takes is a string of characters with multiple port identifiers semi-colon delimited (comma also).
+Two mechanisms are provided for customizing the injections that this kext performs.  Kernel flag 'uia_exclude' can be used to eliminate ports that would normally be injected.  uia_exclude takes is a string of characters with multiple port identifiers comma delimited.
 
-For example, on my Lenovo u430 without FakePCIID_XHCIMux, bluetooth is on XHC at HS06. And the touchscreen is at HS01.  I can disable the touchscreen by booting with kernel flag uia_exclude=HS01, or with uia_exclude=HS06 disable bluetooth.  To disable both, uia_exclude=HS01;HS06.  With FakePCIID_XHCIMux, the touchscreen is on the hub on USB port1 on EH01.  To disable this hub port, uia_exclude=HP11.  You can easily see which devices are connected to which ports.  Each port identifier injected by the kext is unique, so you can easily identify each one.
+For example, on my Lenovo u430 without FakePCIID_XHCIMux, bluetooth is on XHC at HS06. And the touchscreen is at HS01.  I can disable the touchscreen by booting with kernel flag uia_exclude=HS01, or with uia_exclude=HS06 disable bluetooth.  To disable both, uia_exclude=HS01,HS06.  With FakePCIID_XHCIMux, the touchscreen is on the hub on USB port1 on EH01.  To disable this hub port, uia_exclude=HP11.  You can easily see which devices are connected to which ports.  Each port identifier injected by the kext is unique, so you can easily identify each one.
 
 In addition a few other flags are available:
 
@@ -71,14 +73,14 @@ flag -uia_exclude_hs: excludes all HSxx ports
 
 flag -uia_exclude_ss: excludes all SSxx ports
 
-flag -uia_exclude_ssp: excludes all SSPx ports
-
 flag -uia_exclude_xhc: disables injection on XHC
+
+flag uia_include: to include certain ports even if would be normally excluded.  For example: -uia_exclude_hs uia_include=HS01 (to keep HS01 but exclude other HSxx)
 
 
 But excluding ports doesn't give all the flexibility that might be needed.  All of the data in the Info.plist for ConfigurationData can be configured through ACPI.
 
-For example, if we wanted to enable only SSP1 on XHC for 8086_8xxx chipsets:
+For example, if we wanted to enable only SS01 on XHC for 8086_8xxx chipsets:
 
 ```
 DefinitionBlock ("", "SSDT", 1, "hack", "UIAC", 0)
@@ -95,7 +97,7 @@ DefinitionBlock ("", "SSDT", 1, "hack", "UIAC", 0)
                 "port-count", Buffer() { 0xa, 0, 0, 0 },
                 "ports", Package()
                 {
-                    "SSP1", Package()
+                    "SS01", Package()
                     {
                         "UsbConnector", 3,
                         "port", Buffer() { 0xa, 0, 0, 0 },
@@ -131,11 +133,6 @@ The best way to download the config_patches.plist and other repo files is to dow
 https://github.com/RehabMan/OS-X-USB-Inject-All/archive/master.zip
 
 
-If you need a copy of the repo with the 9-series injector:
-
-https://github.com/RehabMan/OS-X-USB-Inject-All/archive/706fea51222eb73343d347db10cf48500333a7bd.zip
-
-
 ### How to Install
 
 Install the kext with your favorite kext installer, such as Kext Wizard.
@@ -146,25 +143,66 @@ sudo cp -R Release/USBInjectAll.kext /Library/Extensions
 sudo touch /System/Library/Extensions && sudo kextcache -u /
 ```
 
+Note: This kext assumes you already renamed EHC1->EH01 and EHC2->EH02.  It also assumes your XHCI controller is named XHC or XHCI (not renamed to XHC1).  These names EH01/EH02/XHC are best to avoid conflicts with built-in port injectors for Apple computers.  Refer to config_patches.plist in this repo for the patches required (config_patches.plist/ACPI/DSDT/Patches).
+
+
 If you have a 9-series chipset XHC controller, 8086:8cb1, install XHCI-9-series.kext from the project as well.  The USB3 drivers will not load without this injector kext.  Update: As of 10.11.1, this injector is no longer needed as direct support was added.  If you need it, go back in history: https://github.com/RehabMan/OS-X-USB-Inject-All/tree/706fea51222eb73343d347db10cf48500333a7bd
 
-If you have an X99-series chipset XHC controller, 8086:8d31, install XHCI-x99-injector.kext from the project as well. The USB3 drivers will not load without this injector kext.
+Certain Intel xHCI controllers are not supported natively and require an injector.  For these systems, install XHCI-unsupported.kext.  The native support depends by version, you can check in /System/Library/Extensions/IOUSBHostFamily.kext/Contents/Plugins/AppleUSBXHCIPCI.kext/Contents/Info.plist to see if your xHCI is supported natively.
 
-If you have a 200-series chipset XHC controller, 8086:a2af, you may need to install XHCI-200-series-injector.kext from the project.  The drivers will load without it, but maybe not the correct ones.  This injector kext invokes the same drivers used by 100-series 8086:a12f.
+Because XHCI-unsupported.kext uses a lower IOProbeScore than the native Info.plist, there is no harm in installing it even if native support exists.
 
-If you have a 300-series chipset XHC controller, 8086:a36d, you may need to install XHCI-300-series-injector.kext from the project.  The drivers will load without it, but maybe not the correct ones.  This injector kext invokes the same drivers used by 100-series 8086:a12f.
+Typical xHCI needing XHCI-unsupported.kext:
 
-Note: This kext assumes you already renamed EHC1->EH01 and EHC2->EH02.  It also assumes your XHCI controller is named XHC (not renamed to XHC1).  These names EH01/EH02/XHC are best to avoid conflicts with built-in port injectors for Apple computers.  Refer to config_patches.plist in this repo for the patches required (config_patches.plist/ACPI/DSDT/Patches).
+X99-series chipset XHC controller, 8086:8d31
+200-series chipset XHC controller, 8086:a2af (depends on macOS version)
+300-series chipset XHC controller, 8086:a36d or 8086:9ded
 
 
 ### Build Environment
 
-My build environment is currently Xcode 7.0, using SDK 10.11, targeting OS X 10.11.
+My build environment is currently Xcode, using SDK 10.11, targeting OS X 10.11.
 
 Keep in mind the Info.plist is generated by generate_Info_plist.sh.  Do not edit the Info.plist directly.  USBInectAll_template-Info.plist serves as the starter Info.plist, with each model injected using USBInjectAll_model_template.plist.  This allows new models to be added easily by modifying the script.
 
 
 ### Change Log
+
+2018-11-08 (0.7.1)
+
+- add MacBookAir8,1 and Macmini8,1
+
+- remove EHCI configuration (EH01/EH02/HUB1/HUB2) from models which are unlikely to need it
+
+- remove matching for AppeBusPowerControllerUSB, which was used in old versions of macOS (note: AppleBusPowerController should still match)
+
+- change SSPx to SS0x in 8086_8xxx
+
+- reduce Info.plist size
+
+- rename all SSPx -> SS0x for consistency
+
+- remove kernel flag -uia_exclude_ssp
+
+
+2018-10-26 (0.7.0)
+
+- ignore empty entries in RMCF data (user error: caused when package size is larger than the data within)
+
+- add uia_include kernel flag
+
+
+2018-10-20 (0.6.9)
+
+- add support for AppleBusPowerController (not just AppleBusPowerControllerUSB)
+
+- note that the configuration override via "AppleBusPowerControllerUSB" in UIAC is no longer supported; must use "AppleBusPowerController"
+
+
+2018-10-15 (no new version of USBInjectAll.kext)
+
+- consolidated XHCI injectors into single XHCI-unsupported.kext
+
 
 2018-10-08 (0.6.8)
 
